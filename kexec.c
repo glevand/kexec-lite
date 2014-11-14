@@ -749,17 +749,20 @@ static void exec_kexec(void)
 
 static void usage(void)
 {
-	printf("Usage: kexec\n"
-		"	-h|--help\n"
-		"	-d|--debug\n"
-		"	-v|--version\n"
-		"	-i|--initrd|--ramdisk\n"
-		"	-c|--command-line|--append\n"
-		"	-b|--devicetreeblob|--dtb\n"
-		"	-l|--load\n"
-		"	-u|--unload\n"
-		"	-e|--exec\n"
-		"	-f|--force\n");
+	printf(
+"kexec (" PACKAGE_NAME ") " PACKAGE_VERSION "\n"
+"Usage: kexec [options] image\n"
+"	-b|--devicetreeblob|--dtb\n"
+"	-c|--command-line|--append\n"
+"	-d|--debug\n"
+"	-e|--exec\n"
+"	-f|--force\n"
+"	-h|--help\n"
+"	-i|--initrd|--ramdisk\n"
+"	-l|--load\n"
+"	-u|--unload\n"
+"	-v|--version\n"
+"Send bug reports to " PACKAGE_BUGREPORT "\n");
 }
 
 int main(int argc, char *argv[])
@@ -773,55 +776,39 @@ int main(int argc, char *argv[])
 	int unload = 0;
 	int force = 0;
 	struct option long_options[] = {
-		{"help", 0, 0, 'h' },
-		{"debug", 0, 0, 'd' },
-		{"version", 0, 0, 'v' },
-		{"initrd", required_argument, 0, 'i' },
-		{"ramdisk", required_argument, 0, 'i' },
-		{"command-line", required_argument, 0, 'c' },
-		{"append", required_argument, 0, 'c' },
 		{"devicetreeblob", required_argument, 0, 'b' },
 		{"dtb", required_argument, 0, 'b' },
-		{"load", 0, 0, 'l' },
-		{"unload", 0, 0, 'u' },
+		{"append", required_argument, 0, 'c' },
+		{"command-line", required_argument, 0, 'c' },
+		{"debug", 0, 0, 'd' },
 		{"exec", 0, 0, 'e' },
 		{"force", 0, 0, 'f' },
+		{"help", 0, 0, 'h' },
+		{"initrd", required_argument, 0, 'i' },
+		{"ramdisk", required_argument, 0, 'i' },
+		{"load", 0, 0, 'l' },
+		{"unload", 0, 0, 'u' },
+		{"version", 0, 0, 'v' },
 		{ 0, 0, 0, 0 }
 	};
 	void *fdt;
 
 	while (1) {
-		signed char c = getopt_long(argc, argv, "hdvi:c:b:luef", long_options, NULL);
+		signed char c = getopt_long(argc, argv, "b:c:defhi:luv", long_options, NULL);
 		if (c < 0)
 			break;
 
 		switch (c) {
-		case 'd':
-			debug = 1;
-			break;
-
-		case 'v':
-			printf("%s\n", VERSION);
-			exit(1);
-
-		case 'i':
-			initrd = optarg;
+		case 'b':
+			devicetreeblob = optarg;
 			break;
 
 		case 'c':
 			cmdline = optarg;
 			break;
 
-		case 'b':
-			devicetreeblob = optarg;
-			break;
-
-		case 'l':
-			load = 1;
-			break;
-
-		case 'u':
-			unload = 1;
+		case 'd':
+			debug = 1;
 			break;
 
 		case 'e':
@@ -835,6 +822,21 @@ int main(int argc, char *argv[])
 		case 'h':
 		default:
 			usage();
+			exit(1);
+		case 'i':
+			initrd = optarg;
+			break;
+
+		case 'l':
+			load = 1;
+			break;
+
+		case 'u':
+			unload = 1;
+			break;
+
+		case 'v':
+			printf(VERSION "\n");
 			exit(1);
 		}
 	}
