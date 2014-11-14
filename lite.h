@@ -47,7 +47,7 @@ extern void *kernel_current_addr;
 extern unsigned long device_tree_addr;
 extern unsigned long kexec_load_addr;
 
-void add_kexec_segment(char *type, void *buf, unsigned long bufsize, void *dest,
+void add_kexec_segment(const char *type, void *buf, unsigned long bufsize, void *dest,
 		       unsigned long memsize);
 
 #if !defined(HAVE_FDT_SETPROP_U64)

@@ -31,6 +31,7 @@
 #include <libfdt.h>
 #include <limits.h>
 #include <getopt.h>
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/reboot.h>
@@ -58,6 +59,7 @@ do { 					\
 } while (0)				\
 
 struct kexec_segment {
+	const char *type;
 	void *buf;
 	size_t bufsz;
 	void *mem;
@@ -85,7 +87,7 @@ unsigned long kexec_load_addr;
 static unsigned long initrd_start;
 static unsigned long initrd_end;
 
-void add_kexec_segment(char *type, void *buf, unsigned long bufsize,
+void add_kexec_segment(const char *type, void *buf, unsigned long bufsize,
 			      void *dest, unsigned long memsize)
 {
 	if (kexec_segment_nr == MAX_KEXEC_SEGMENTS) {
@@ -97,10 +99,12 @@ void add_kexec_segment(char *type, void *buf, unsigned long bufsize,
 	debug_printf("add_kexec_segment %-11s buf %p bufsize 0x%08lx, dest %p, "
 			"memsize 0x%08lx\n", type, buf, bufsize, dest, memsize);
 
+	kexec_segments[kexec_segment_nr].type = type;
 	kexec_segments[kexec_segment_nr].buf = buf;
 	kexec_segments[kexec_segment_nr].bufsz = bufsize;
 	kexec_segments[kexec_segment_nr].mem = dest;
 	kexec_segments[kexec_segment_nr].memsz = memsize;
+
 	kexec_segment_nr++;
 }
 
