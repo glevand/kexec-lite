@@ -30,6 +30,8 @@
  * this chunk down to 0x0 so the secondaries can spin on it.
  */
 
+#include "config.h"
+
 #define __ASSEMBLY__
 #include "kexec_trampoline.h"
 

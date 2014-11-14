@@ -18,11 +18,14 @@
  * Author: Anton Blanchard <anton@au.ibm.com>
  */
 
+#include "config.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <libfdt.h>
 #include "simple_allocator.h"
+#include "lite.h"
 #include "kexec_memory_map.h"
 
 #undef DEBUG

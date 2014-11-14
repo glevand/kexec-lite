@@ -18,6 +18,8 @@
  * Author: Anton Blanchard <anton@au.ibm.com>
  */
 
+#include "config.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

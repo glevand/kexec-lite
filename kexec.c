@@ -18,7 +18,8 @@
  * Author: Anton Blanchard <anton@au.ibm.com>
  */
 
-#define _GNU_SOURCE
+#include "config.h"
+
 #include <sched.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -38,6 +39,7 @@
 #include <net/if.h>
 #include <gelf.h>
 #include "simple_allocator.h"
+#include "lite.h"
 #include "kexec_memory_map.h"
 #include "kexec_trampoline.h"
 
