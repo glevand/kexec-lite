@@ -156,7 +156,7 @@ static void load_kernel(char *image)
 {
 	int fd;
 	Elf *e;
-	int i;
+	size_t i;
 	size_t n;
 	GElf_Phdr phdr;
 	GElf_Ehdr ehdr;
@@ -256,7 +256,7 @@ static void load_kernel(char *image)
 			unsigned long size = phdr.p_filesz;
 			unsigned long memsize = phdr.p_memsz;
 			unsigned long kernel_entry = 0;
-			int ret;
+			size_t ret;
 
 			debug_printf("kernel offset 0x%lx paddr 0x%lx "
 				"filesz %ld memsz %ld\n", offset, paddr,
@@ -276,8 +276,8 @@ static void load_kernel(char *image)
 
 			ret = read(fd, p, size);
 			if (size != ret) {
-				fprintf(stderr, "load_kernel: read of %ld bytes "
-					"returned %d: %s\n", size, ret, strerror(errno));
+				fprintf(stderr, "load_kernel: read of %lu bytes "
+					"returned %zu: %s\n", size, ret, strerror(errno));
 				exit(1);
 			}
 
@@ -460,7 +460,7 @@ static void load_initrd(char *name)
 	struct stat st;
 	void *p;
 	unsigned long size;
-	int ret;
+	size_t ret;
 	unsigned long memsize;
 	unsigned long dest;
 
@@ -487,7 +487,7 @@ static void load_initrd(char *name)
 
 	ret = read(fd, p, size);
 	if (ret != size) {
-		fprintf(stderr, "load_initrd: read of %s returned %d: %s\n",
+		fprintf(stderr, "load_initrd: read of %s returned %zu: %s\n",
 			name, ret, strerror(errno));
 		exit(1);
 	}
@@ -682,7 +682,7 @@ static int debug_arm_kexec(void)
 		if (ret) {
 			fprintf(stderr, "kexec_load failed on segment %d:\n",
 				i);
-			fprintf(stderr, "dest %p, memsize 0x%08lx, %s\n",
+			fprintf(stderr, "dest %p, memsize 0x%08zu, %s\n",
 				kexec_segments[i-1].mem,
 				kexec_segments[i-1].memsz,
 				strerror(errno));
@@ -715,7 +715,7 @@ static int arm_kexec(void)
 static int set_affinity(void)
 {
 	cpu_set_t cpuset;
-	int lowest;
+	unsigned int lowest;
 
 	CPU_ZERO(&cpuset);
 

@@ -70,7 +70,7 @@ static unsigned long __alloc(struct free_entry *e, unsigned long start, unsigned
 
 	/* It won't fit in this region */
 	if (start < e->start || (e->start + e->size) < end)
-		return -1;
+		return -1UL;
 
 	if ((start == e->start) && (end == (e->start + e->size))) {
 		/* Consume the entire region */
@@ -113,7 +113,7 @@ static unsigned long __alloc(struct free_entry *e, unsigned long start, unsigned
 		return start;
 	}
 
-	return -1;
+	return -1UL;
 }
 
 unsigned long simple_alloc_at(struct free_map *map, unsigned long start, unsigned long size)
@@ -124,7 +124,7 @@ unsigned long simple_alloc_at(struct free_map *map, unsigned long start, unsigne
 	list_for_each(&map->entries, e, list) {
 		if (start >= e->start && (start + size) <= (e->start + e->size)) {
 			ret = __alloc(e, start, size);
-			if (ret != -1)
+			if (ret != -1UL)
 				return ret;
 		}
 	}
@@ -144,7 +144,7 @@ unsigned long simple_alloc_low(struct free_map *map, unsigned long size, unsigne
 		unsigned long ret;
 
 		ret = __alloc(e, aligned_start, size);
-		if (ret != -1)
+		if (ret != -1UL)
 			return ret;
 	}
 
@@ -163,7 +163,7 @@ unsigned long simple_alloc_high(struct free_map *map, unsigned long size, unsign
 		unsigned long ret;
 
 		ret = __alloc(e, aligned_start, size);
-		if (ret != -1)
+		if (ret != -1UL)
 			return ret;
 	}
 

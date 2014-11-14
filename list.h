@@ -237,7 +237,8 @@ static inline void list_del(struct list_node *n)
  *	list_del_from(&parent->children, &child->list);
  *	parent->num_children--;
  */
-static inline void list_del_from(struct list_head *h, struct list_node *n)
+static inline void list_del_from(__attribute__((unused)) struct list_head *h,
+	struct list_node *n)
 {
 #ifdef CCAN_LIST_DEBUG
 	{
