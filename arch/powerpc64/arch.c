@@ -20,9 +20,47 @@
 
 #include "config.h"
 
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "lite.h"
+
+#include "kexec_memory_map.h"
+#include "kexec_trampoline.h"
+#include "simple_allocator.h"
 
 void arch_load(void)
 {
-	/* NOP */
+	unsigned long size;
+	unsigned long memsize;
+	unsigned long dest;
+	void *p;
+
+	size = __trampoline_end - __trampoline_start;
+	memsize = ALIGN_UP(size, PAGE_SIZE_64K);
+
+	p = malloc(size);
+	if (!p) {
+		fprintf(stderr, "malloc of %ld bytes failed: %s\n", size,
+			strerror(errno));
+	}
+
+	memcpy(p, __trampoline_start, size);
+	/*
+	 * Copy the first 0x100 bytes from the final kernel
+	 * except for the first instruction.
+	 */
+	memcpy(p+sizeof(int), kernel_current_addr+sizeof(int),
+		0x100-sizeof(int));
+
+	trampoline_set_kernel(p, kernel_addr);
+	trampoline_set_device_tree(p, device_tree_addr);
+
+	dest = simple_alloc_high(kexec_map, memsize, PAGE_SIZE_64K);
+
+	kexec_load_addr = dest;
+
+	add_kexec_segment("trampoline", p, size, (void *)dest, memsize);
 }

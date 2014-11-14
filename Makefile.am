@@ -46,8 +46,6 @@ kexec_SOURCES = \
 	kexec.c \
 	kexec_memory_map.c \
 	kexec_memory_map.h \
-	kexec_trampoline.h \
-	kexec_trampoline.S \
 	list.c \
 	list.h \
 	lite.h \

@@ -32,6 +32,19 @@ void arch_load(void);
 
 /* Utility routines. */
 
+#define PAGE_SIZE_64K		0x10000
+
+#define ALIGN_UP(VAL, SIZE)	(((VAL) + (SIZE-1)) & ~(SIZE-1))
+#define ALIGN_DOWN(VAL, SIZE)	((VAL) & ~(SIZE-1))
+
+extern unsigned long kernel_addr;
+extern void *kernel_current_addr;
+extern unsigned long device_tree_addr;
+extern unsigned long kexec_load_addr;
+
+void add_kexec_segment(char *type, void *buf, unsigned long bufsize, void *dest,
+		       unsigned long memsize);
+
 #if !defined(HAVE_FDT_SETPROP_U64)
 
 #include <stdint.h>

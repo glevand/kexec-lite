@@ -42,7 +42,6 @@
 #include "lite.h"
 
 #include "kexec_memory_map.h"
-#include "kexec_trampoline.h"
 #include "simple_allocator.h"
 
 #define VERSION "1.0.0"
@@ -66,15 +65,8 @@ struct kexec_segment {
 	size_t memsz;
 };
 
-#define KEXEC_ARCH_PPC64	(21 << 16)
-
 #define	LINUX_REBOOT_CMD_KEXEC	0x45584543
 
-
-#define PAGE_SIZE_64K		0x10000
-
-#define ALIGN_UP(VAL, SIZE)	(((VAL) + (SIZE-1)) & ~(SIZE-1))
-#define ALIGN_DOWN(VAL, SIZE)	((VAL) & ~(SIZE-1))
 
 #define FDT_ERROR(STR, ERROR)						\
 do {									\
@@ -87,14 +79,14 @@ do {									\
 static int kexec_segment_nr;
 static struct kexec_segment kexec_segments[MAX_KEXEC_SEGMENTS];
 
-static unsigned long kernel_addr;
-static void *kernel_current_addr;
+unsigned long kernel_addr;
+void *kernel_current_addr;
+unsigned long device_tree_addr;
+unsigned long kexec_load_addr;
 static unsigned long initrd_start;
 static unsigned long initrd_end;
-static unsigned long device_tree_addr;
-static unsigned long trampoline_addr;
 
-static void add_kexec_segment(char *type, void *buf, unsigned long bufsize,
+void add_kexec_segment(char *type, void *buf, unsigned long bufsize,
 			      void *dest, unsigned long memsize)
 {
 	if (kexec_segment_nr == MAX_KEXEC_SEGMENTS) {
@@ -574,39 +566,6 @@ static void load_fdt(void *fdt, int update_initrd)
 	add_kexec_segment("device tree", fdt, size, (void *)dest, memsize);
 }
 
-static void load_trampoline(void)
-{
-	unsigned long size;
-	unsigned long memsize;
-	unsigned long dest;
-	void *p;
-
-	size = __trampoline_end - __trampoline_start;
-	memsize = ALIGN_UP(size, PAGE_SIZE_64K);
-
-	p = malloc(size);
-	if (!p) {
-		fprintf(stderr, "malloc of %ld bytes failed: %s\n", size,
-			strerror(errno));
-	}
-
-	memcpy(p, __trampoline_start, size);
-	/*
-	 * Copy the first 0x100 bytes from the final kernel
-	 * except for the first instruction.
-	 */
-	memcpy(p+sizeof(int), kernel_current_addr+sizeof(int),
-		0x100-sizeof(int));
-
-	trampoline_set_kernel(p, kernel_addr);
-	trampoline_set_device_tree(p, device_tree_addr);
-
-	dest = simple_alloc_high(kexec_map, memsize, PAGE_SIZE_64K);
-
-	trampoline_addr = dest;
-
-	add_kexec_segment("trampoline", p, size, (void *)dest, memsize);
-}
 
 static int shutdown_interfaces(void)
 {
@@ -662,7 +621,7 @@ static long syscall_kexec_load(unsigned long entry, unsigned long nr_segments,
 			       struct kexec_segment *segments)
 {
 	return syscall(__NR_kexec_load, entry, nr_segments, segments,
-		       KEXEC_ARCH_PPC64);
+		       KEXEC_ARCH_SYSCALL);
 }
 
 static int debug_kexec_load(void)
@@ -674,14 +633,14 @@ static int debug_kexec_load(void)
 	 * First see if the kexec syscall is available and we have
 	 * permission to use it.
 	 */
-	ret = syscall_kexec_load(trampoline_addr, 0, kexec_segments);
+	ret = syscall_kexec_load(kexec_load_addr, 0, kexec_segments);
 	if (ret) {
 		perror("kexec syscall failed");
 		exit(1);
 	}
 
 	for (i = 1; i <= kexec_segment_nr; i++) {
-		ret = syscall_kexec_load(trampoline_addr, i, kexec_segments);
+		ret = syscall_kexec_load(kexec_load_addr, i, kexec_segments);
 
 		if (ret) {
 			fprintf(stderr, "kexec_load failed on segment %d:\n",
@@ -703,7 +662,7 @@ static int kexec_load(void)
 {
 	int ret;
 
-	ret = syscall_kexec_load(trampoline_addr, kexec_segment_nr,
+	ret = syscall_kexec_load(kexec_load_addr, kexec_segment_nr,
 				 kexec_segments);
 
 	if (ret)
@@ -885,7 +844,7 @@ int main(int argc, char *argv[])
 			update_cmdline(fdt, cmdline);
 
 		load_fdt(fdt, 1);
-		load_trampoline();
+		arch_load();
 
 		kexec_load();
 

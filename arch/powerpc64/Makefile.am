@@ -9,6 +9,8 @@ noinst_LTLIBRARIES = libarch.la
 
 libarch_la_SOURCES = \
 	arch.h \
-	arch.c
+	arch.c \
+	kexec_trampoline.h \
+	kexec_trampoline.S
 
 MAINTAINERCLEANFILES = Makefile.in

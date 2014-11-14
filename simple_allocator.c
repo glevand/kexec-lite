@@ -29,9 +29,6 @@
 #include "list.h"
 #include "simple_allocator.h"
 
-#define ALIGN_UP(VAL, SIZE)	(((VAL) + (SIZE-1)) & ~(SIZE-1))
-#define ALIGN_DOWN(VAL, SIZE)	((VAL) & ~(SIZE-1))
-
 #undef DEBUG
 #ifdef DEBUG
 #define debug_printf(A...) fprintf(stderr, A)
