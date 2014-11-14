@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+
+#include "lite.h"
+
 #include "list.h"
 #include "simple_allocator.h"
 

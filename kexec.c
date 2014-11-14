@@ -38,10 +38,12 @@
 #include <sys/wait.h>
 #include <net/if.h>
 #include <gelf.h>
-#include "simple_allocator.h"
+
 #include "lite.h"
+
 #include "kexec_memory_map.h"
 #include "kexec_trampoline.h"
+#include "simple_allocator.h"
 
 #define VERSION "1.0.0"
 

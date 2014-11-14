@@ -24,9 +24,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <libfdt.h>
-#include "simple_allocator.h"
+
 #include "lite.h"
+
 #include "kexec_memory_map.h"
+#include "simple_allocator.h"
 
 #undef DEBUG
 

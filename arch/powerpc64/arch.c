@@ -12,40 +12,17 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ *
+ * Copyright (C) IBM Corporation, 2013
+ *
+ * Author: Anton Blanchard <anton@au.ibm.com>
  */
 
-#if !defined(KEXEC_LITE_H)
-#define KEXEC_LITE_H
+#include "config.h"
 
-#include <gelf.h>
-#include <libfdt.h>
+#include "lite.h"
 
-#include "arch.h"
-
-/* Arch routines. */
-
-#if !defined(KEXEC_ARCH_SYSCALL)
-# error ERROR: KEXEC_ARCH_SYSCALL not defined.
-#endif
-
-void arch_load(void);
-
-/* Utility routines. */
-
-#if !defined(HAVE_FDT_SETPROP_U64)
-
-#include <stdint.h>
-
-typedef uint64_t fdt64_t;
-typedef uint32_t fdt32_t;
-
-static inline int fdt_setprop_u64(void *fdt, int nodeoffset, const char *name,
-	uint64_t val)
+void arch_load(void)
 {
-	fdt64_t tmp = cpu_to_fdt64(val);
-	return fdt_setprop(fdt, nodeoffset, name, &tmp, sizeof(tmp));
+	/* NOP */
 }
-
-#endif /* !defined(HAVE_FDT_SETPROP_U64) */
-
-#endif

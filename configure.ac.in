@@ -113,9 +113,20 @@ AC_SUBST([LIBTOOL_DEPS])
 AC_SUBST([DESTDIR])
 AC_SUBST([pkgsysconfdir], ["${sysconfdir}/${package}"])
 
+case $host in
+powerpc*-*-*)
+	ARCH_PATH=arch/powerpc64
+	;;
+*-*-*)
+	AC_MSG_FAILURE([Unsupported kexec-lite host architecture '$host'.])
+	;;
+esac
+AC_SUBST([ARCH_PATH])
+
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	Makefile
+	arch/powerpc64/Makefile
 ])
 
 AC_OUTPUT

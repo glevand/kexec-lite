@@ -1,8 +1,14 @@
 
+SUBDIRS = @ARCH_PATH@
+
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CPPFLAGS = $(DEFAULT_CPPFLAGS)
-AM_CFLAGS = $(DEFAULT_CFLAGS)
+AM_CPPFLAGS = \
+	$(DEFAULT_CPPFLAGS) \
+	-I$(top_srcdir)/@ARCH_PATH@
+
+AM_CFLAGS = \
+	$(DEFAULT_CFLAGS)
 
 LIBTOOL_DEPS = @LIBTOOL_DEPS@
 
@@ -28,6 +34,7 @@ maintainer-clean-local:
 	rm -rf m4
 
 common_libs = \
+	$(top_builddir)/@ARCH_PATH@/libarch.la \
 	-lfdt \
 	-lelf
 
