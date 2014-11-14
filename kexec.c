@@ -87,6 +87,25 @@ unsigned long kexec_load_addr;
 static unsigned long initrd_start;
 static unsigned long initrd_end;
 
+static void dump_segment(FILE *stream, const char *header, unsigned int number,
+	const struct kexec_segment *seg)
+{
+	fprintf(stream,
+		"%ssegment %d: "
+		"%-11s buf %016" PRIxPTR " bufsize 0x%08zx, mem %016" PRIxPTR
+		", memsize 0x%08zx\n",
+		header, number, seg->type, (uintptr_t)seg->buf, seg->bufsz,
+		(uintptr_t)seg->mem, seg->memsz);
+}
+
+static void dump_segments(FILE *stream, const char *header)
+{
+	int i;
+
+	for (i = 0; i < kexec_segment_nr; i++)
+		dump_segment(stream, header, i + 1, &kexec_segments[i]);
+}
+
 void add_kexec_segment(const char *type, void *buf, unsigned long bufsize,
 			      void *dest, unsigned long memsize)
 {
@@ -96,14 +115,15 @@ void add_kexec_segment(const char *type, void *buf, unsigned long bufsize,
 		exit(1);
 	}
 
-	debug_printf("add_kexec_segment %-11s buf %p bufsize 0x%08lx, dest %p, "
-			"memsize 0x%08lx\n", type, buf, bufsize, dest, memsize);
-
 	kexec_segments[kexec_segment_nr].type = type;
 	kexec_segments[kexec_segment_nr].buf = buf;
 	kexec_segments[kexec_segment_nr].bufsz = bufsize;
 	kexec_segments[kexec_segment_nr].mem = dest;
 	kexec_segments[kexec_segment_nr].memsz = memsize;
+
+	if (debug)
+		dump_segment(stderr, "add_kexec_segment: ", kexec_segment_nr,
+			&kexec_segments[kexec_segment_nr]);
 
 	kexec_segment_nr++;
 }
@@ -644,13 +664,9 @@ static int debug_kexec_load(void)
 		ret = syscall_kexec_load(kexec_load_addr, i, kexec_segments);
 
 		if (ret) {
-			fprintf(stderr, "kexec_load failed on segment %d:\n",
-				i);
-			fprintf(stderr, "dest %p, memsize 0x%08zu, %s\n",
-				kexec_segments[i-1].mem,
-				kexec_segments[i-1].memsz,
-				strerror(errno));
-
+			fprintf(stderr, "kexec_load failed on segment %d: %s\n",
+				i, strerror(errno));
+			dump_segments(stderr, " ");
 			syscall_kexec_load(0, 0, NULL);
 			exit(1);
 		}
