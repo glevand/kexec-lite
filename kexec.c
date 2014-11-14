@@ -826,7 +826,7 @@ int main(int argc, char *argv[])
 		else
 			fdt = fdt_from_fs();
 
-		kexec_memory_map(fdt, 0);
+		arch_memory_map(fdt, 0);
 		if (debug) {
 			debug_printf("free memory map:\n");
 			simple_dump_free_map(kexec_map);

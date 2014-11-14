@@ -31,6 +31,7 @@
 #endif
 
 void arch_load(void);
+void arch_memory_map(void *fdt, int reserve_initrd);
 int arch_check_elf(const char *image, const GElf_Ehdr *ehdr);
 
 /* Utility routines. */

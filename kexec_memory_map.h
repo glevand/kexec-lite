@@ -23,6 +23,10 @@
 
 extern struct free_map *kexec_map;
 
-void kexec_memory_map(void *fdt, int reserve_initrd);
+int getprop_u32(const void *fdt, int nodeoffset, const char *name,
+	uint32_t *val);
+int getprop_u64(const void *fdt, int nodeoffset, const char *name,
+	uint64_t *val);
+int new_style_reservation(void *fdt, int reserve_initrd);
 
 #endif

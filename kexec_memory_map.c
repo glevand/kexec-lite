@@ -32,14 +32,9 @@
 
 #undef DEBUG
 
-#define MEMORY_CAP (2UL * 1024 * 1024 * 1024)
-
-static unsigned long mem_top = 0;
-
 struct free_map *kexec_map;
 
-
-static int getprop_u32(const void *fdt, int nodeoffset, const char *name, uint32_t *val)
+int getprop_u32(const void *fdt, int nodeoffset, const char *name, uint32_t *val)
 {
 	int len;
 	const fdt32_t *prop;
@@ -62,7 +57,7 @@ static int getprop_u32(const void *fdt, int nodeoffset, const char *name, uint32
 	return 0;
 }
 
-static int getprop_u64(const void *fdt, int nodeoffset, const char *name, uint64_t *val)
+int getprop_u64(const void *fdt, int nodeoffset, const char *name, uint64_t *val)
 {
 	int len;
 	const fdt64_t *prop;
@@ -85,7 +80,7 @@ static int getprop_u64(const void *fdt, int nodeoffset, const char *name, uint64
 	return 0;
 }
 
-static int new_style_reservation(void *fdt, int reserve_initrd)
+int new_style_reservation(void *fdt, int reserve_initrd)
 {
 	int nodeoffset;
 	const void *p;
