@@ -32,7 +32,59 @@
 
 #undef DEBUG
 
-struct free_map *kexec_map;
+#define MEMORY_CAP (2UL * 1024 * 1024 * 1024)
+
+uint64_t fill_memory_map(struct free_map *map, void *fdt, uint64_t fixed_start)
+{
+	unsigned long mem_top = 0;
+
+	uint64_t start, size;
+	int nodeoffset;
+
+	nodeoffset = fdt_path_offset(fdt, "/");
+
+	if (nodeoffset < 0) {
+		fprintf(stderr, "Device tree has no root node\n");
+		exit(1);
+	}
+
+	while (1) {
+		const char *name;
+		int len;
+		const fdt64_t *reg;
+
+		nodeoffset = fdt_next_node(fdt, nodeoffset, NULL);
+		if (nodeoffset < 0)
+			break;
+
+		name = fdt_get_name(fdt, nodeoffset, NULL);
+
+		if (!name || strncmp(name, "memory", strlen("memory")))
+			continue;
+
+		reg = fdt_getprop(fdt, nodeoffset, "reg", &len);
+
+		while (len) {
+			start = fdt64_to_cpu(*reg++);
+			size = fdt64_to_cpu(*reg++);
+			len -= 2 * sizeof(uint64_t);
+
+			if (start >= MEMORY_CAP)
+				continue;
+
+			if (fixed_start != no_fixed_start && start != fixed_start)
+				continue;
+
+			if (start + size > MEMORY_CAP)
+				size = MEMORY_CAP - start;
+
+			simple_free(map, start, size);
+			mem_top = start + size;
+		}
+	}
+
+	return mem_top;
+}
 
 int getprop_u32(const void *fdt, int nodeoffset, const char *name, uint32_t *val)
 {
@@ -80,7 +132,7 @@ int getprop_u64(const void *fdt, int nodeoffset, const char *name, uint64_t *val
 	return 0;
 }
 
-int new_style_reservation(void *fdt, int reserve_initrd)
+int new_style_reservation(struct free_map *map, void *fdt, int reserve_initrd)
 {
 	int nodeoffset;
 	const void *p;
@@ -143,7 +195,7 @@ int new_style_reservation(void *fdt, int reserve_initrd)
 		if (!reserve_initrd && !strcmp(name, "linux,initramfs"))
 			continue;
 
-		simple_alloc_at(kexec_map, start, size);
+		simple_alloc_at(map, start, size);
 
 		if (fdt_add_mem_rsv(fdt, start, size))
 			perror("fdt_add_mem_rsv");

@@ -31,10 +31,6 @@
 #include "kexec_trampoline.h"
 #include "simple_allocator.h"
 
-#define MEMORY_CAP (2UL * 1024 * 1024 * 1024)
-
-static unsigned long mem_top = 0;
-
 int arch_check_elf(const char *image, const GElf_Ehdr *ehdr)
 {
 	if (ehdr->e_machine != EM_PPC64) {
@@ -50,6 +46,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 	uint64_t start, size, end;
 	int nodeoffset;
 	int lpar = 0;
+	uint64_t mem_top;
 
 	/* Work out if we are in LPAR mode */
 	nodeoffset = fdt_path_offset(fdt, "/rtas");
@@ -58,56 +55,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 			lpar = 1;
 	}
 
-	/* First find our memory */
-	nodeoffset = fdt_path_offset(fdt, "/");
-	if (nodeoffset < 0) {
-		fprintf(stderr, "Device tree has no root node\n");
-		exit(1);
-	}
-
-	while (1) {
-		const char *name;
-		int len;
-		const fdt64_t *reg;
-
-		nodeoffset = fdt_next_node(fdt, nodeoffset, NULL);
-		if (nodeoffset < 0)
-			break;
-
-		name = fdt_get_name(fdt, nodeoffset, NULL);
-
-		if (!name || strncmp(name, "memory", strlen("memory")))
-			continue;
-
-		reg = fdt_getprop(fdt, nodeoffset, "reg", &len);
-
-		while (len) {
-			start = fdt64_to_cpu(*reg++);
-			size = fdt64_to_cpu(*reg++);
-			len -= 2 * sizeof(uint64_t);
-
-			if (lpar == 1) {
-				/* Only use the RMA region for LPAR */
-				if (start == 0) {
-					if (size > MEMORY_CAP)
-						size = MEMORY_CAP;
-					simple_free(map, 0, size);
-					mem_top = size;
-				}
-			} else {
-				if (start >= MEMORY_CAP)
-					continue;
-
-				if ((start + size) > MEMORY_CAP)
-					size = MEMORY_CAP - start;
-
-				simple_free(map, start, size);
-
-				if ((start + size) > mem_top)
-					mem_top = start + size;
-			}
-		}
-	}
+	mem_top = fill_memory_map(map, fdt, lpar ? 0 : no_fixed_start);
 
 	/* Reserve the kernel */
 	nodeoffset = fdt_path_offset(fdt, "/chosen");
@@ -143,7 +91,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 
 	/* XXX FIXME: Reserve TCEs in map */
 
-	if (new_style_reservation(fdt, reserve_initrd))
+	if (new_style_reservation(map, fdt, reserve_initrd))
 		return;
 
 	/* Reserve the initrd if requested */
