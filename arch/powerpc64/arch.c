@@ -45,13 +45,11 @@ int arch_check_elf(const char *image, const GElf_Ehdr *ehdr)
 	return 0;
 }
 
-void arch_memory_map(void *fdt, int reserve_initrd)
+void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 {
 	uint64_t start, size, end;
 	int nodeoffset;
 	int lpar = 0;
-
-	kexec_map = simple_init();
 
 	/* Work out if we are in LPAR mode */
 	nodeoffset = fdt_path_offset(fdt, "/rtas");
@@ -93,7 +91,7 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 				if (start == 0) {
 					if (size > MEMORY_CAP)
 						size = MEMORY_CAP;
-					simple_free(kexec_map, 0, size);
+					simple_free(map, 0, size);
 					mem_top = size;
 				}
 			} else {
@@ -103,7 +101,7 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 				if ((start + size) > MEMORY_CAP)
 					size = MEMORY_CAP - start;
 
-				simple_free(kexec_map, start, size);
+				simple_free(map, start, size);
 
 				if ((start + size) > mem_top)
 					mem_top = start + size;
@@ -128,7 +126,7 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 		exit(1);
 	}
 
-	simple_alloc_at(kexec_map, start, end - start);
+	simple_alloc_at(map, start, end - start);
 
 	/* Reserve the MMU hashtable in non LPAR mode */
 	if (lpar == 0) {
@@ -140,10 +138,10 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 		}
 
 		if (start < mem_top)
-			simple_alloc_at(kexec_map, start, size);
+			simple_alloc_at(map, start, size);
 	}
 
-	/* XXX FIXME: Reserve TCEs in kexec_map */
+	/* XXX FIXME: Reserve TCEs in map */
 
 	if (new_style_reservation(fdt, reserve_initrd))
 		return;
@@ -154,7 +152,7 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 	    !getprop_u64(fdt, nodeoffset, "linux,initrd-end", &end)) {
 
 		if (start < mem_top)
-			simple_alloc_at(kexec_map, start, end - start);
+			simple_alloc_at(map, start, end - start);
 	}
 
 	/* Reserve RTAS */
@@ -172,7 +170,7 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 			exit(1);
 		}
 
-		simple_alloc_at(kexec_map, rtas_start, rtas_size);
+		simple_alloc_at(map, rtas_start, rtas_size);
 
 		if (fdt_add_mem_rsv(fdt, rtas_start, rtas_size))
 			perror("fdt_add_mem_rsv");
@@ -194,14 +192,14 @@ void arch_memory_map(void *fdt, int reserve_initrd)
 			exit(1);
 		}
 
-		simple_alloc_at(kexec_map, opal_start, opal_size);
+		simple_alloc_at(map, opal_start, opal_size);
 
 		if (fdt_add_mem_rsv(fdt, opal_start, opal_size))
 			perror("fdt_add_mem_rsv");
 	}
 }
 
-void arch_load(void)
+void arch_load(struct free_map *map)
 {
 	unsigned long size;
 	unsigned long memsize;
@@ -228,7 +226,7 @@ void arch_load(void)
 	trampoline_set_kernel(p, kernel_addr);
 	trampoline_set_device_tree(p, device_tree_addr);
 
-	dest = simple_alloc_high(kexec_map, memsize, PAGE_SIZE_64K);
+	dest = simple_alloc_high(map, memsize, PAGE_SIZE_64K);
 
 	kexec_load_addr = dest;
 

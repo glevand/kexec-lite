@@ -147,7 +147,7 @@ static GElf_Addr get_entry_addr(Elf *e, GElf_Ehdr ehdr, GElf_Addr entry)
 	return (new_entry);
 }
 
-static void load_kernel(char *image)
+static void load_kernel(struct free_map *map, char *image)
 {
 	int fd;
 	Elf *e;
@@ -231,7 +231,7 @@ static void load_kernel(char *image)
 	/* Round up to nearest 64kB page */
 	total = ALIGN_UP(total, PAGE_SIZE_64K);
 
-	dest = simple_alloc_low(kexec_map, total, PAGE_SIZE_64K);
+	dest = simple_alloc_low(map, total, PAGE_SIZE_64K);
 
 	/* We enter at the start of the kernel */
 	kernel_addr = dest;
@@ -447,7 +447,7 @@ static void *fdt_from_fs(void)
 	return fdt;
 }
 
-static void load_initrd(char *name)
+static void load_initrd(struct free_map *map, char *name)
 {
 	int fd;
 	struct stat st;
@@ -488,7 +488,7 @@ static void load_initrd(char *name)
 	close(fd);
 
 	memsize = ALIGN_UP(size, PAGE_SIZE_64K);
-	dest = simple_alloc_low(kexec_map, memsize, PAGE_SIZE_64K);
+	dest = simple_alloc_low(map, memsize, PAGE_SIZE_64K);
 
 	initrd_start = dest;
 	initrd_end = dest + size;
@@ -514,7 +514,7 @@ static void update_cmdline(void *fdt, char *cmdline)
 	}
 }
 
-static void load_fdt(void *fdt, int update_initrd)
+static void load_fdt(struct free_map *map, void *fdt, int update_initrd)
 {
 	unsigned long size;
 	unsigned long memsize;
@@ -556,7 +556,7 @@ static void load_fdt(void *fdt, int update_initrd)
 	size = fdt_totalsize(fdt);
 	memsize = ALIGN_UP(size, PAGE_SIZE_64K);
 
-	dest = simple_alloc_high(kexec_map, memsize, PAGE_SIZE_64K);
+	dest = simple_alloc_high(map, memsize, PAGE_SIZE_64K);
 
 	device_tree_addr = dest;
 
@@ -731,6 +731,7 @@ int main(int argc, char *argv[])
 	char *cmdline = NULL;
 	char *devicetreeblob = NULL;
 	char *kernel = NULL;
+	struct free_map *map;
 	int exec = 0;
 	int load = 0;
 	int unload = 0;
@@ -826,28 +827,34 @@ int main(int argc, char *argv[])
 		else
 			fdt = fdt_from_fs();
 
-		arch_memory_map(fdt, 0);
+		map = simple_init();
+
+		if (!map)
+			exit(1);
+
+		arch_memory_map(map, fdt, 0);
+
 		if (debug) {
 			debug_printf("free memory map:\n");
-			simple_dump_free_map(kexec_map);
+			simple_dump_free_map(map);
 		}
 
-		load_kernel(kernel);
+		load_kernel(map, kernel);
 
 		if (initrd)
-			load_initrd(initrd);
+			load_initrd(map, initrd);
 
 		if (cmdline)
 			update_cmdline(fdt, cmdline);
 
-		load_fdt(fdt, 1);
-		arch_load();
+		load_fdt(map, fdt, 1);
+		arch_load(map);
 
 		kexec_load();
 
 		if (debug) {
 			debug_printf("free memory map after loading:\n");
-			simple_dump_free_map(kexec_map);
+			simple_dump_free_map(map);
 		}
 	}
 

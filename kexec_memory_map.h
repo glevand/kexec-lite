@@ -21,8 +21,6 @@
 #ifndef KEXEC_MEMORY_MAP_H
 #define KEXEC_MEMORY_MAP_H
 
-extern struct free_map *kexec_map;
-
 int getprop_u32(const void *fdt, int nodeoffset, const char *name,
 	uint32_t *val);
 int getprop_u64(const void *fdt, int nodeoffset, const char *name,

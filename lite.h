@@ -21,6 +21,7 @@
 #include <libfdt.h>
 
 #include "arch.h"
+#include "simple_allocator.h"
 
 #include <gelf.h>
 
@@ -30,8 +31,8 @@
 # error ERROR: KEXEC_ARCH_SYSCALL not defined.
 #endif
 
-void arch_load(void);
-void arch_memory_map(void *fdt, int reserve_initrd);
+void arch_load(struct free_map *map);
+void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd);
 int arch_check_elf(const char *image, const GElf_Ehdr *ehdr);
 
 /* Utility routines. */
