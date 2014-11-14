@@ -661,7 +661,7 @@ static long syscall_kexec_load(unsigned long entry, unsigned long nr_segments,
 		       KEXEC_ARCH_PPC64);
 }
 
-static int debug_arm_kexec(void)
+static int debug_kexec_load(void)
 {
 	int i;
 	int ret;
@@ -695,7 +695,7 @@ static int debug_arm_kexec(void)
 	return 0;
 }
 
-static int arm_kexec(void)
+static int kexec_load(void)
 {
 	int ret;
 
@@ -703,7 +703,7 @@ static int arm_kexec(void)
 				 kexec_segments);
 
 	if (ret)
-		ret = debug_arm_kexec();
+		ret = debug_kexec_load();
 
 	return ret;
 }
@@ -881,7 +881,7 @@ int main(int argc, char *argv[])
 		load_fdt(fdt, 1);
 		load_trampoline();
 
-		arm_kexec();
+		kexec_load();
 
 		if (debug) {
 			debug_printf("free memory map after loading:\n");
@@ -904,7 +904,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (unload)
-		arm_kexec();
+		kexec_load();
 
 	return 0;
 }
