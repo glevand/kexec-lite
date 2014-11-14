@@ -37,7 +37,6 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <net/if.h>
-#include <gelf.h>
 
 #include "lite.h"
 
@@ -193,15 +192,13 @@ static void load_kernel(char *image)
 		exit(1);
 	}
 
-	if (ehdr.e_machine != EM_PPC64) {
-		fprintf(stderr, "load_kernel: %s is not a 64bit PowerPC executable\n", image);
-		exit(1);
-	}
-
 	if (elf_getphdrnum(e, &n) != 0) {
 		fprintf(stderr, "load_kernel: elf_getphdrnum failed: %s", elf_errmsg(-1));
 		exit(1);
 	}
+
+	if (arch_check_elf(image, &ehdr) != 0)
+		exit(1);
 
 	/* First work out how much memory we need to reserve */
 	for (i = 0; i < n; i++) {

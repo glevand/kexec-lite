@@ -22,6 +22,8 @@
 
 #include "arch.h"
 
+#include <gelf.h>
+
 /* Arch routines. */
 
 #if !defined(KEXEC_ARCH_SYSCALL)
@@ -29,6 +31,7 @@
 #endif
 
 void arch_load(void);
+int arch_check_elf(const char *image, const GElf_Ehdr *ehdr);
 
 /* Utility routines. */
 

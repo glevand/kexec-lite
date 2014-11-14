@@ -31,6 +31,16 @@
 #include "kexec_trampoline.h"
 #include "simple_allocator.h"
 
+int arch_check_elf(const char *image, const GElf_Ehdr *ehdr)
+{
+	if (ehdr->e_machine != EM_PPC64) {
+		fprintf(stderr, "load_kernel: %s is not a 64bit PowerPC executable\n", image);
+		return -1;
+	}
+
+	return 0;
+}
+
 void arch_load(void)
 {
 	unsigned long size;
