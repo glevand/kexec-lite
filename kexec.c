@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <syscall.h>
 #include <libfdt.h>
+#include <limits.h>
 #include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -159,7 +160,7 @@ static void load_kernel(char *image)
 	size_t n;
 	GElf_Phdr phdr;
 	GElf_Ehdr ehdr;
-	unsigned long start = -1UL;
+	unsigned long start = ULONG_MAX;
 	unsigned long end = 0;
 	unsigned long dest;
 	unsigned long total;
