@@ -114,6 +114,9 @@ AC_SUBST([DESTDIR])
 AC_SUBST([pkgsysconfdir], ["${sysconfdir}/${package}"])
 
 case $host in
+aarch64*-*-*)
+	ARCH_PATH=arch/arm64
+	;;
 powerpc*-*-*)
 	ARCH_PATH=arch/powerpc64
 	;;
@@ -126,6 +129,7 @@ AC_SUBST([ARCH_PATH])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([
 	Makefile
+	arch/arm64/Makefile
 	arch/powerpc64/Makefile
 ])
 
