@@ -21,11 +21,11 @@
 #ifndef KEXEC_MEMORY_MAP_H
 #define KEXEC_MEMORY_MAP_H
 
-//#define no_fixed_start UINT64_MAX
-
 static const uint64_t no_fixed_start = UINT64_MAX;
+static const uint64_t no_memory_cap = UINT64_MAX;
 
-uint64_t fill_memory_map(struct free_map *map, void *fdt, uint64_t fixed_start);
+void fill_memory_map(struct free_map *map, void *fdt, uint64_t memory_cap,
+	uint64_t fixed_start);
 
 int getprop_u32(const void *fdt, int nodeoffset, const char *name,
 	uint32_t *val);

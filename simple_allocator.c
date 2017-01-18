@@ -229,12 +229,12 @@ void simple_dump_free_map(struct free_map *map)
 	struct free_entry *e;
 
 	if (list_empty(&map->entries)) {
-		fprintf(stderr, "(empty)\n");
+		fprintf(stderr, " (empty)\n");
 		return;
 	}
 
 	list_for_each(&map->entries, e, list)
-		fprintf(stderr, "0x%08lx-0x%08lx\n", e->start,
+		fprintf(stderr, " 0x%010lx-0x%010lx\n", e->start,
 			e->start + e->size);
 }
 

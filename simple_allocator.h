@@ -30,6 +30,7 @@ struct free_entry {
 };
 
 struct free_map {
+	uint64_t mem_top;
 	struct list_head entries;
 };
 

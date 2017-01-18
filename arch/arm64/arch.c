@@ -25,30 +25,20 @@ int arch_check_elf(const char *image, const GElf_Ehdr *ehdr)
 	return 0;
 }
 
-void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
+void arch_fill_map(struct free_map *map, void *fdt)
 {
-	uint64_t start, size, end;
-	int nodeoffset;
-	uint64_t mem_top;
+	return fill_map(map, fdt, no_memory_cap, no_fixed_start);
+}
 
-	mem_top = fill_memory_map(map, fdt, no_fixed_start);
-
+void arch_reserve_regions(struct free_map *map, void *fdt, int reserve_initrd)
+{
 	/* Reserve the kernel */
-	nodeoffset = fdt_path_offset(fdt, "/chosen");
-	if (nodeoffset < 0) {
-		fprintf(stderr, "Device tree has no chosen node\n");
-		exit(1);
-	}
+	//get load address from elf file
+	//get kernel size from arm64 image header
+	
+	simple_alloc_at(map, start, end - start);
 
-	/*
-	 * XXX FIXME: Need to add linux,kernel-start property to the
-	 * kernel to handle relocatable kernels.
-	 */
-	start = 0;
-	if (getprop_u64(fdt, nodeoffset, "linux,kernel-end", &end)) {
-		fprintf(stderr, "getprop linux,kernel-end failed\n");
-		exit(1);
-	}
+	/* Reserve the initrd  */
 }
 
 void arch_load(struct free_map *map)

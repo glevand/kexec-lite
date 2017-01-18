@@ -31,31 +31,46 @@
 #include "kexec_trampoline.h"
 #include "simple_allocator.h"
 
-int arch_check_elf(const char *image, const GElf_Ehdr *ehdr)
+#define MEMORY_CAP (2UL * 1024 * 1024 * 1024)
+
+struct arch_powerpc64 {
+	int lpar;
+};
+
+static struct arch_powerpc64 arch;
+
+void arch_fill_map(struct free_map *map, void *fdt)
 {
-	if (ehdr->e_machine != EM_PPC64) {
-		fprintf(stderr, "load_kernel: %s is not a 64bit PowerPC executable\n", image);
+	int nodeoffset;
+	uint64_t fixed_start = no_fixed_start;
+
+	/* Work out if we are in LPAR mode */
+	nodeoffset = fdt_path_offset(fdt, "/rtas");
+	if (nodeoffset >= 0 && 
+		fdt_getprop(fdt, nodeoffset, "ibm,hypertas-functions", NULL)) {
+		arch.lpar = 1;
+		fixed_start = 0;
+	}
+
+	fill_memory_map(map, fdt, MEMORY_CAP, fixed_start);
+}
+
+int arch_check_elf(const char *image, const struct elf_image *elf)
+{
+	if (elf->ehdr.e_machine != EM_PPC64) {
+		fprintf(stderr,
+			"load_kernel: %s is not a 64 bit PowerPC executable\n",
+			image);
 		return -1;
 	}
 
 	return 0;
 }
 
-void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
+void arch_reserve_regions(struct free_map *map, void *fdt, int reserve_initrd)
 {
-	uint64_t start, size, end;
 	int nodeoffset;
-	int lpar = 0;
-	uint64_t mem_top;
-
-	/* Work out if we are in LPAR mode */
-	nodeoffset = fdt_path_offset(fdt, "/rtas");
-	if (nodeoffset >= 0) {
-		if (fdt_getprop(fdt, nodeoffset, "ibm,hypertas-functions", NULL))
-			lpar = 1;
-	}
-
-	mem_top = fill_memory_map(map, fdt, lpar ? 0 : no_fixed_start);
+	uint64_t start, size, end;
 
 	/* Reserve the kernel */
 	nodeoffset = fdt_path_offset(fdt, "/chosen");
@@ -77,7 +92,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 	simple_alloc_at(map, start, end - start);
 
 	/* Reserve the MMU hashtable in non LPAR mode */
-	if (lpar == 0) {
+	if (arch.lpar == 0) {
 		if (getprop_u64(fdt, nodeoffset, "linux,htab-base", &start) ||
 		    getprop_u64(fdt, nodeoffset, "linux,htab-size", &size)) {
 			fprintf(stderr, "Could not find linux,htab-base or "
@@ -85,7 +100,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 			exit(1);
 		}
 
-		if (start < mem_top)
+		if (start < map->mem_top)
 			simple_alloc_at(map, start, size);
 	}
 
@@ -99,7 +114,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
             !getprop_u64(fdt, nodeoffset, "linux,initrd-start", &start) &&
 	    !getprop_u64(fdt, nodeoffset, "linux,initrd-end", &end)) {
 
-		if (start < mem_top)
+		if (start < map->mem_top)
 			simple_alloc_at(map, start, end - start);
 	}
 
@@ -147,7 +162,7 @@ void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd)
 	}
 }
 
-void arch_load(struct free_map *map)
+void arch_load_extra(struct free_map *map)
 {
 	unsigned long size;
 	unsigned long memsize;

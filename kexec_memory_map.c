@@ -20,6 +20,7 @@
 
 #include "config.h"
 
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,12 +33,9 @@
 
 #undef DEBUG
 
-#define MEMORY_CAP (2UL * 1024 * 1024 * 1024)
-
-uint64_t fill_memory_map(struct free_map *map, void *fdt, uint64_t fixed_start)
+void fill_map(struct free_map *map, void *fdt, uint64_t memory_cap,
+	uint64_t fixed_start)
 {
-	unsigned long mem_top = 0;
-
 	uint64_t start, size;
 	int nodeoffset;
 
@@ -59,6 +57,7 @@ uint64_t fill_memory_map(struct free_map *map, void *fdt, uint64_t fixed_start)
 
 		name = fdt_get_name(fdt, nodeoffset, NULL);
 
+
 		if (!name || strncmp(name, "memory", strlen("memory")))
 			continue;
 
@@ -69,21 +68,20 @@ uint64_t fill_memory_map(struct free_map *map, void *fdt, uint64_t fixed_start)
 			size = fdt64_to_cpu(*reg++);
 			len -= 2 * sizeof(uint64_t);
 
-			if (start >= MEMORY_CAP)
+			if (start >= memory_cap)
 				continue;
 
 			if (fixed_start != no_fixed_start && start != fixed_start)
 				continue;
 
-			if (start + size > MEMORY_CAP)
-				size = MEMORY_CAP - start;
+			if (start + size > memory_cap)
+				size = memory_cap - start;
 
 			simple_free(map, start, size);
-			mem_top = start + size;
+			map->mem_top = start + size;
 		}
 	}
 
-	return mem_top;
 }
 
 int getprop_u32(const void *fdt, int nodeoffset, const char *name, uint32_t *val)

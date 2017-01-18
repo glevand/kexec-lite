@@ -31,9 +31,20 @@
 # error ERROR: KEXEC_ARCH_SYSCALL not defined.
 #endif
 
-void arch_load(struct free_map *map);
-void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd);
-int arch_check_elf(const char *image, const GElf_Ehdr *ehdr);
+struct elf_image {
+	const char *path;
+	int fd;
+	Elf *e;
+	GElf_Ehdr ehdr;
+	size_t ph_count;
+};
+
+void arch_fill_map(struct free_map *map, void *fdt);
+int arch_check_elf(const char *image, const struct elf_image *elf);
+void arch_reserve_regions(struct free_map *map, void *fdt, int reserve_initrd);
+
+void arch_load_extra(struct free_map *map);
+//void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd);
 
 /* Utility routines. */
 

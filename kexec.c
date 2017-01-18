@@ -171,71 +171,74 @@ static GElf_Addr get_entry_addr(Elf *e, GElf_Ehdr ehdr, GElf_Addr entry)
 	return (new_entry);
 }
 
-static void load_kernel(struct free_map *map, char *image)
+static void elf_init(struct elf_image *elf, const char *image)
 {
-	int fd;
-	Elf *e;
-	size_t i;
-	size_t n;
-	GElf_Phdr phdr;
-	GElf_Ehdr ehdr;
-	unsigned long start = ULONG_MAX;
-	unsigned long end = 0;
-	unsigned long dest;
-	unsigned long total;
+	memset(elf, 0, sizeof(*elf));
+
+	elf->path = image;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		fprintf(stderr, "load_kernel: Could not initialise libelf\n");
 		exit(1);
 	}
 
-	if ((fd = open(image , O_RDONLY, 0)) < 0) {
-		fprintf(stderr, "load_kernel: Open of %s failed: %s\n", image,
+	if ((elf->fd = open(elf->path , O_RDONLY, 0)) < 0) {
+		fprintf(stderr, "load_kernel: Open of %s failed: %s\n", elf->path,
 			strerror(errno));
 		exit(1);
 	}
 
-	e = elf_begin(fd, ELF_C_READ, NULL);
-	if (e == NULL) {
+	elf->e = elf_begin(elf->fd, ELF_C_READ, NULL);
+	if (elf->e == NULL) {
 		fprintf(stderr, "load_kernel: elf_begin failed: %s", elf_errmsg(-1));
 		exit(1);
 	}
 
-	if (elf_kind(e) != ELF_K_ELF) {
-		fprintf(stderr, "load_kernel: %s is not a valid ELF file\n", image);
+	if (elf_kind(elf->e) != ELF_K_ELF) {
+		fprintf(stderr, "load_kernel: %s is not a valid ELF file\n", elf->path);
 		exit(1);
 	}
 
-	if (gelf_getehdr(e , &ehdr) == NULL) {
+	if (gelf_getehdr(elf->e , &elf->ehdr) == NULL) {
 		fprintf(stderr, "load_kernel: gelf_getehdr failed: %s", elf_errmsg(-1));
 		exit(1);
 	}
 
-	if (ehdr.e_type != ET_EXEC && ehdr.e_type != ET_DYN) {
-		fprintf(stderr, "load_kernel: %s is not a valid executable\n", image);
+	if (elf->ehdr.e_type != ET_EXEC && elf->ehdr.e_type != ET_DYN) {
+		fprintf(stderr, "load_kernel: %s is not a valid executable\n", elf->path);
 		exit(1);
 	}
 
-	if (elf_getphdrnum(e, &n) != 0) {
+	if (elf_getphdrnum(elf->e, &elf->ph_count) != 0) {
 		fprintf(stderr, "load_kernel: elf_getphdrnum failed: %s", elf_errmsg(-1));
 		exit(1);
 	}
 
-	if (arch_check_elf(image, &ehdr) != 0)
+	if (arch_check_elf(elf->path, elf) != 0)
 		exit(1);
+}
+
+static unsigned long reserve_kernel(struct elf_image *elf, struct free_map *map)
+{
+	size_t i;
+	GElf_Phdr phdr;
+	unsigned long start = ULONG_MAX;
+	unsigned long end = 0;
+	unsigned long total;
 
 	/* First work out how much memory we need to reserve */
-	for (i = 0; i < n; i++) {
-		if (gelf_getphdr(e , i, &phdr) != &phdr) {
-			fprintf(stderr, "load_kernel: elf_getphdr failed %s", elf_errmsg(-1));
+	for (i = 0; i < elf->ph_count; i++) {
+		if (gelf_getphdr(elf->e , i, &phdr) != &phdr) {
+			fprintf(stderr, "load_kernel: elf_getphdr failed %s",
+				elf_errmsg(-1));
 			exit(1);
 		}
 
 		/* Make sure we aren't trying to load a normal executable */
 		if (phdr.p_type == PT_INTERP) {
 			fprintf(stderr, "load_kernel: %s requires an ELF interpreter\n",
-				image);
-			continue;
+				elf->path);
+			exit(1);
 		}
 
 		if (phdr.p_type == PT_LOAD) {
@@ -255,14 +258,20 @@ static void load_kernel(struct free_map *map, char *image)
 	/* Round up to nearest 64kB page */
 	total = ALIGN_UP(total, PAGE_SIZE_64K);
 
-	dest = simple_alloc_low(map, total, PAGE_SIZE_64K);
+	return simple_alloc_low(map, total, PAGE_SIZE_64K);
+}
 
-	/* We enter at the start of the kernel */
-	kernel_addr = dest;
+static void load_kernel_image(const struct elf_image *elf, uint64_t entry)
+{
+	size_t i;
+	GElf_Phdr phdr;
 
-	for (i = 0; i < n; i++) {
-		if (gelf_getphdr(e , i, &phdr) != &phdr) {
-			fprintf(stderr, "load_kernel: elf_getphdr failed: %s", elf_errmsg(-1));
+	kernel_addr = entry;
+
+	for (i = 0; i < elf->ph_count; i++) {
+		if (gelf_getphdr(elf->e , i, &phdr) != &phdr) {
+			fprintf(stderr, "load_kernel: elf_getphdr failed: %s",
+				elf_errmsg(-1));
 			exit(1);
 		}
 
@@ -289,9 +298,9 @@ static void load_kernel(struct free_map *map, char *image)
 			if (!kernel_current_addr)
 				kernel_current_addr = p;
 
-			lseek(fd, offset, SEEK_SET);
+			lseek(elf->fd, offset, SEEK_SET);
 
-			ret = read(fd, p, size);
+			ret = read(elf->fd, p, size);
 			if (size != ret) {
 				fprintf(stderr, "load_kernel: read of %lu bytes "
 					"returned %zu: %s\n", size, ret, strerror(errno));
@@ -301,7 +310,7 @@ static void load_kernel(struct free_map *map, char *image)
 			memsize = ALIGN_UP(memsize, PAGE_SIZE_64K);
 
 			add_kexec_segment("kernel", p, size,
-					  (void *)(dest + paddr - start),
+					  (void *)(kernel_addr + paddr - start),
 					  memsize);
 
 			/* Parse function descriptor for ELFv1 kernels */
@@ -842,6 +851,9 @@ int main(int argc, char *argv[])
 	}
 
 	if (load) {
+		int result;
+		struct elf_image elf;
+		
 		if (devicetreeblob)
 			fdt = initialize_fdt(devicetreeblob);
 		else
@@ -852,14 +864,29 @@ int main(int argc, char *argv[])
 		if (!map)
 			exit(1);
 
-		arch_memory_map(map, fdt, 0);
+		result = arch_fill_map(map, fdt);
 
+		if (result)
+			exit (1);
 		if (debug) {
 			debug_printf("free memory map:\n");
 			simple_dump_free_map(map);
 		}
 
-		load_kernel(map, kernel);
+		result = elf_init(&elf, kernel);
+
+		if (result)
+			exit (1);
+
+		result = read_elf_image(&elf, kernel);
+
+		if (result)
+			exit (1);
+
+		result = arch_reserve_regions(map, fdt, &elf);
+
+		if (result)
+			exit (1);
 
 		if (initrd)
 			load_initrd(map, initrd);
