@@ -213,18 +213,25 @@ static void elf_init(struct elf_image *elf, const char *image)
 		fprintf(stderr, "load_kernel: elf_getphdrnum failed: %s", elf_errmsg(-1));
 		exit(1);
 	}
-
-	if (arch_check_elf(elf->path, elf) != 0)
-		exit(1);
 }
 
+static void elf_close(struct elf_image *elf)
+{
+		elf_end(elf->e);
+		elf->e = 0;
+
+		close(elf->fd);
+		elf->fd = 0;
+}
+
+#if 0
 static unsigned long reserve_kernel(struct elf_image *elf, struct free_map *map)
 {
 	size_t i;
 	GElf_Phdr phdr;
 	unsigned long start = ULONG_MAX;
 	unsigned long end = 0;
-	unsigned long total;
+	unsigned long kernel_size;
 
 	/* First work out how much memory we need to reserve */
 	for (i = 0; i < elf->ph_count; i++) {
@@ -253,12 +260,12 @@ static unsigned long reserve_kernel(struct elf_image *elf, struct free_map *map)
 		}
 	}
 
-	total = end - start;
+	kernel_size = end - start;
 
 	/* Round up to nearest 64kB page */
-	total = ALIGN_UP(total, PAGE_SIZE_64K);
+	kernel_size = ALIGN_UP(kernel_size, PAGE_SIZE_64K);
 
-	return simple_alloc_low(map, total, PAGE_SIZE_64K);
+	return simple_alloc_low(map, kernel_size, PAGE_SIZE_64K);
 }
 
 static void load_kernel_image(const struct elf_image *elf, uint64_t entry)
@@ -326,6 +333,71 @@ static void load_kernel_image(const struct elf_image *elf, uint64_t entry)
 
 	elf_end(e);
 	close(fd);
+}
+#endif
+
+static void load_kernel(struct free_map *map, struct elf_image *elf)
+{
+	size_t i;
+	GElf_Phdr phdr;
+	unsigned long start = ULONG_MAX;
+	unsigned long dest;
+	unsigned long kernel_size;
+
+	kernel_size = arch_kernel_size(elf);
+
+	if (!kernel_size)
+		exit(1);
+
+	dest = simple_alloc_low(map, kernel_size, PAGE_SIZE_64K);
+
+	/* We enter at the start of the kernel */
+	kernel_addr = dest;
+
+	for (i = 0; i < elf->ph_count; i++) {
+		if (gelf_getphdr(elf->e , i, &phdr) != &phdr) {
+			fprintf(stderr, "load_kernel: elf_getphdr failed: %s", elf_errmsg(-1));
+			exit(1);
+		}
+
+		if (phdr.p_type == PT_LOAD) {
+			void *p;
+			unsigned long offset = phdr.p_offset;
+			unsigned long paddr = phdr.p_paddr;
+			unsigned long size = phdr.p_filesz;
+			unsigned long memsize = phdr.p_memsz;
+			size_t ret;
+
+			debug_printf("kernel offset 0x%lx paddr 0x%lx "
+				"filesz %ld memsz %ld\n", offset, paddr,
+				size, memsize);
+
+			p = malloc(size);
+			if (!p) {
+				fprintf(stderr, "load_kernel: malloc of %ld bytes "
+					"failed: %s\n", size, strerror(errno));
+				exit(1);
+			}
+
+			if (!kernel_current_addr)
+				kernel_current_addr = p;
+
+			lseek(elf->fd, offset, SEEK_SET);
+
+			ret = read(elf->fd, p, size);
+			if (size != ret) {
+				fprintf(stderr, "load_kernel: read of %lu bytes "
+					"returned %zu: %s\n", size, ret, strerror(errno));
+				exit(1);
+			}
+
+			memsize = ALIGN_UP(memsize, PAGE_SIZE_64K);
+
+			add_kexec_segment("kernel", p, size,
+					  (void *)(dest + paddr - start),
+					  memsize);
+		}
+	}
 }
 
 static void *dtc_resize(void *p, unsigned long size)
@@ -851,7 +923,6 @@ int main(int argc, char *argv[])
 	}
 
 	if (load) {
-		int result;
 		struct elf_image elf;
 		
 		if (devicetreeblob)
@@ -864,29 +935,23 @@ int main(int argc, char *argv[])
 		if (!map)
 			exit(1);
 
-		result = arch_fill_map(map, fdt);
+		arch_fill_map(map, fdt);
 
-		if (result)
-			exit (1);
 		if (debug) {
 			debug_printf("free memory map:\n");
 			simple_dump_free_map(map);
 		}
 
-		result = elf_init(&elf, kernel);
+		elf_init(&elf, kernel);
 
-		if (result)
-			exit (1);
+		if (arch_check_elf(&elf))
+			exit(1);
 
-		result = read_elf_image(&elf, kernel);
+		load_kernel(map, &elf);
 
-		if (result)
-			exit (1);
+		elf_close(&elf);
 
-		result = arch_reserve_regions(map, fdt, &elf);
-
-		if (result)
-			exit (1);
+		arch_reserve_regions(map, fdt, 0);
 
 		if (initrd)
 			load_initrd(map, initrd);
@@ -895,7 +960,7 @@ int main(int argc, char *argv[])
 			update_cmdline(fdt, cmdline);
 
 		load_fdt(map, fdt, 1);
-		arch_load(map);
+		arch_load_extra(map);
 
 		kexec_load();
 

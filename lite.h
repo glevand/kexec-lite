@@ -40,9 +40,9 @@ struct elf_image {
 };
 
 void arch_fill_map(struct free_map *map, void *fdt);
-int arch_check_elf(const char *image, const struct elf_image *elf);
+int arch_check_elf(const struct elf_image *elf);
+uint64_t arch_kernel_size(const struct elf_image *elf);
 void arch_reserve_regions(struct free_map *map, void *fdt, int reserve_initrd);
-
 void arch_load_extra(struct free_map *map);
 //void arch_memory_map(struct free_map *map, void *fdt, int reserve_initrd);
 

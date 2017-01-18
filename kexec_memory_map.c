@@ -33,7 +33,7 @@
 
 #undef DEBUG
 
-void fill_map(struct free_map *map, void *fdt, uint64_t memory_cap,
+void fill_memory_map(struct free_map *map, void *fdt, uint64_t memory_cap,
 	uint64_t fixed_start)
 {
 	uint64_t start, size;

@@ -21,6 +21,7 @@
 #include "config.h"
 
 #include <errno.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,16 +56,53 @@ void arch_fill_map(struct free_map *map, void *fdt)
 	fill_memory_map(map, fdt, MEMORY_CAP, fixed_start);
 }
 
-int arch_check_elf(const char *image, const struct elf_image *elf)
+int arch_check_elf(const struct elf_image *elf)
 {
 	if (elf->ehdr.e_machine != EM_PPC64) {
 		fprintf(stderr,
 			"load_kernel: %s is not a 64 bit PowerPC executable\n",
-			image);
+			elf->path);
 		return -1;
 	}
 
 	return 0;
+}
+
+uint64_t arch_kernel_size(const struct elf_image *elf)
+{
+	size_t i;
+	GElf_Phdr phdr;
+	uint64_t end = 0;
+	uint64_t start = UINT64_MAX;
+
+	/* First work out how much memory we need to reserve */
+	for (i = 0; i < elf->ph_count; i++) {
+		if (gelf_getphdr(elf->e , i, &phdr) != &phdr) {
+			fprintf(stderr, "load_kernel: elf_getphdr failed %s", elf_errmsg(-1));
+			exit(1);
+		}
+
+		/* Make sure we aren't trying to load a normal executable */
+		if (phdr.p_type == PT_INTERP) {
+			fprintf(stderr, "load_kernel: %s requires an ELF interpreter\n",
+				elf->path);
+			exit(1);
+		}
+
+		if (phdr.p_type == PT_LOAD) {
+			unsigned long paddr = phdr.p_paddr;
+			unsigned long memsize = phdr.p_memsz;
+
+			if (paddr < start)
+				start = paddr;
+
+			if (paddr + memsize > end)
+				end = paddr + memsize;
+		}
+	}
+
+	/* Round up to nearest 64kB page */
+	return ALIGN_UP(end - start, PAGE_SIZE_64K);
 }
 
 void arch_reserve_regions(struct free_map *map, void *fdt, int reserve_initrd)
